@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useToast } from "../App";
+import { useToast, useLocale } from "../App";
 import {
   fetchBookBySlug,
   fetchAllRatings,
@@ -27,14 +27,14 @@ function StarDisplay({ rating }) {
   );
 }
 
-function ReviewCard({ review, onEdit, onDelete, canEdit }) {
+function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(locale || "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -133,21 +133,24 @@ function LoadingState() {
 function BookDetail() {
   const { slug } = useParams();
   const { addToast } = useToast();
-  
+  const { locale } = useLocale();
+
   const [book, setBook] = useState(null);
   const [ratings, setRatings] = useState([]);
   const [loadingBook, setLoadingBook] = useState(true);
   const [loadingRatings, setLoadingRatings] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
 
-  // Load book data
+  // Load book data when slug or locale changes
   useEffect(() => {
     async function loadBook() {
+      setLoadingBook(true);
+      setError(null);
       try {
-        const data = await fetchBookBySlug(slug);
+        const data = await fetchBookBySlug(slug, locale);
         if (!data) {
           setError("Book not found");
         } else {
@@ -162,23 +165,23 @@ function BookDetail() {
     }
 
     loadBook();
-  }, [slug]);
+  }, [slug, locale]);
 
   // Function to load/reload ratings
   const loadRatings = useCallback(async () => {
     setLoadingRatings(true);
-    try {
-      const all = await fetchAllRatings();
-      setRatings(all);
-    } catch (err) {
-      console.error(err);
+      try {
+      const all = await fetchAllRatings(locale);
+        setRatings(all);
+      } catch (err) {
+        console.error(err);
       addToast("Failed to load reviews", "error");
-    } finally {
-      setLoadingRatings(false);
-    }
-  }, [addToast]);
+      } finally {
+        setLoadingRatings(false);
+      }
+  }, [addToast, locale]);
 
-  // Initial load of ratings
+  // Load ratings when locale changes
   useEffect(() => {
     loadRatings();
   }, [loadRatings]);
@@ -211,11 +214,11 @@ function BookDetail() {
 
       if (editingReview?.uid) {
         // Update existing review
-        await updateAndPublishRating(editingReview.uid, dataToSend);
+        await updateAndPublishRating(editingReview.uid, dataToSend, locale);
         addToast("Review updated successfully!", "success");
       } else {
         // Create new review
-        await createAndPublishRating(dataToSend);
+        await createAndPublishRating(dataToSend, locale);
         addToast("Review submitted successfully!", "success");
       }
 
@@ -230,14 +233,14 @@ function BookDetail() {
       console.error(err);
       addToast(err.message || "Failed to submit review. Please try again.", "error");
     }
-  }, [book?.uid, editingReview, addToast, loadRatings]);
+  }, [book?.uid, editingReview, addToast, loadRatings, locale]);
 
   // Handle edit review
   const handleEditReview = useCallback((review) => {
     setEditingReview(review);
     setShowReviewForm(true);
     setTimeout(() => {
-      document.querySelector(".review-form-container")?.scrollIntoView({ 
+      document.querySelector(".review-form-container")?.scrollIntoView({
         behavior: "smooth",
         block: "start"
       });
@@ -247,9 +250,9 @@ function BookDetail() {
   // Handle delete review (delete from CMS)
   const handleDeleteReview = useCallback(async (reviewUid) => {
     try {
-      await deleteRating(reviewUid);
+      await deleteRating(reviewUid, locale);
       addToast("Review deleted successfully!", "success");
-      
+
       // Refresh ratings
       setTimeout(() => {
         loadRatings();
@@ -258,7 +261,7 @@ function BookDetail() {
       console.error(err);
       addToast(err.message || "Failed to delete review", "error");
     }
-  }, [addToast, loadRatings]);
+  }, [addToast, loadRatings, locale]);
 
   const handleCancelForm = useCallback(() => {
     setShowReviewForm(false);
@@ -266,7 +269,7 @@ function BookDetail() {
   }, []);
 
   if (loadingBook) return <LoadingState />;
-  
+
   if (error) {
     return (
       <div className="error-container">
@@ -314,12 +317,12 @@ function BookDetail() {
             </div>
 
             <h1 className="book-title-large">{book.title}</h1>
-            
+
             {book.author && (
               <p className="book-author-large">by {book.author}</p>
-            )}
+      )}
 
-            {book.publication_year && (
+      {book.publication_year && (
               <p className="book-year-large">Published: {book.publication_year}</p>
             )}
 
@@ -411,8 +414,8 @@ function BookDetail() {
               >
                 Write the First Review
               </button>
-            )}
-          </div>
+              )}
+            </div>
         )}
 
         {!loadingRatings && bookRatings.length > 0 && (
@@ -424,9 +427,10 @@ function BookDetail() {
                 canEdit={true}
                 onEdit={handleEditReview}
                 onDelete={handleDeleteReview}
+                locale={locale}
               />
-            ))}
-          </div>
+          ))}
+        </div>
         )}
       </section>
     </div>

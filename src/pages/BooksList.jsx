@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useLocale } from "../App";
 import { fetchBooks } from "../services/contentApi";
 import "./BooksList.css";
 
@@ -38,7 +39,7 @@ function BookCard({ book, index }) {
 
       <div className="book-card-content">
         <h3 className="book-title">{book.title}</h3>
-        
+
         {book.author && (
           <p className="book-author">by {book.author}</p>
         )}
@@ -93,15 +94,19 @@ function EmptyState() {
 }
 
 function BooksList() {
+  const { locale } = useLocale();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Fetch books when locale changes
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await fetchBooks();
+        const data = await fetchBooks(locale);
         setBooks(data);
       } catch (err) {
         console.error(err);
@@ -112,7 +117,7 @@ function BooksList() {
     }
 
     load();
-  }, []);
+  }, [locale]);
 
   const filteredBooks = books.filter((book) => {
     const query = searchQuery.toLowerCase();
