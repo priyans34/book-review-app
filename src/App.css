@@ -1,0 +1,150 @@
+/* App Layout */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  transition: transform var(--transition-normal);
+}
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+.logo-icon {
+  font-size: 2rem;
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.4));
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-main {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.logo-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+/* Footer */
+.app-footer {
+  padding: 2rem 0;
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.app-footer p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Toast styles */
+.toast-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.toast.success .toast-icon {
+  background: var(--success);
+  color: white;
+}
+
+.toast.error .toast-icon {
+  background: var(--error);
+  color: white;
+}
+
+.toast-message {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+/* Page Headers */
+.page-header {
+  margin-bottom: 2.5rem;
+}
+
+.page-title {
+  margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0.875rem 1rem;
+  }
+  
+  .logo-main {
+    font-size: 1.25rem;
+  }
+  
+  .logo-sub {
+    font-size: 0.65rem;
+  }
+  
+  .logo-icon {
+    font-size: 1.5rem;
+  }
+}
