@@ -380,6 +380,65 @@
   font-weight: 600;
 }
 
+/* Moderation Styles */
+.moderation-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.moderation-icon {
+  font-size: 1rem;
+}
+
+.moderation-text {
+  flex: 1;
+}
+
+.moderation-reason {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.moderation-pending {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+}
+
+.moderation-flagged {
+  background: rgba(251, 146, 60, 0.15);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  color: #fb923c;
+}
+
+.moderation-rejected {
+  background: rgba(248, 81, 73, 0.15);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  color: #f85149;
+}
+
+/* Pending Review Card */
+.review-card.review-pending {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+.review-blurred {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 1rem;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
 /* Empty Reviews */
 .empty-reviews {
   text-align: center;

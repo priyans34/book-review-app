@@ -76,9 +76,53 @@ function StarDisplay({ rating }) {
   );
 }
 
+// Check if review is flagged or pending moderation
+function getModerationStatus(review) {
+  if (review.flagged === true) return "flagged";
+  if (review.moderation_status === "pending") return "pending";
+  if (review.moderation_status === "rejected") return "rejected";
+  return "approved";
+}
+
+function ModerationBadge({ status, reason }) {
+  if (status === "approved") return null;
+
+  const badges = {
+    pending: {
+      icon: "⏳",
+      text: "Pending moderation",
+      className: "moderation-pending",
+    },
+    flagged: {
+      icon: "⚠️",
+      text: "Under review",
+      className: "moderation-flagged",
+    },
+    rejected: {
+      icon: "🚫",
+      text: "Content removed",
+      className: "moderation-rejected",
+    },
+  };
+
+  const badge = badges[status] || badges.pending;
+
+  return (
+    <div className={`moderation-badge ${badge.className}`}>
+      <span className="moderation-icon">{badge.icon}</span>
+      <span className="moderation-text">{badge.text}</span>
+      {reason && <span className="moderation-reason">({reason})</span>}
+    </div>
+  );
+}
+
 function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const moderationStatus = getModerationStatus(review);
+  const isHidden = moderationStatus === "rejected";
+  const isPending = moderationStatus === "pending" || moderationStatus === "flagged";
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -96,14 +140,25 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
     setIsDeleting(false);
   };
 
+  // Don't render rejected reviews
+  if (isHidden) {
+    return null;
+  }
+
   return (
-    <div className="review-card">
+    <div className={`review-card ${isPending ? "review-pending" : ""}`}>
+      {/* Moderation Badge */}
+      <ModerationBadge
+        status={moderationStatus}
+        reason={review.moderation_reason}
+      />
+
       <div className="review-header">
         <div className="review-rating">
           <StarDisplay rating={review.rating_value} />
           <span className="rating-number">{review.rating_value}/5</span>
         </div>
-        {canEdit && (
+        {canEdit && !isPending && (
           <div className="review-actions">
             <button
               className="btn btn-ghost btn-sm"
@@ -145,7 +200,14 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
 
       {review.title && <h4 className="review-title">{review.title}</h4>}
 
-      {review.comment && <p className="review-comment">{review.comment}</p>}
+      {/* Show blurred content for pending reviews */}
+      {isPending ? (
+        <p className="review-comment review-blurred">
+          This review is being checked by our moderation team...
+        </p>
+      ) : (
+        review.comment && <p className="review-comment">{review.comment}</p>
+      )}
 
       <div className="review-footer">
         <div className="reviewer-info">
