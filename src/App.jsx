@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
-import BooksList from "./pages/BooksList.jsx";
-import BookDetail from "./pages/BookDetail.jsx";
+import BooksList from "./pages/BooksList";
+import BookDetail from "./pages/BookDetail";
 import "./App.css";
 
 // Toast Context for notifications

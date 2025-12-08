@@ -5,8 +5,9 @@ const RATING_CT_UID = "rating";
 
 // CMS API Configuration
 const CMS_API_URL = "https://dev11-api.csnonprod.com/v3";
-const API_KEY = import.meta.env.VITE_CS_API_KEY;
-const MANAGEMENT_TOKEN = import.meta.env.VITE_CS_MANAGEMENT_TOKEN;
+const API_KEY = process.env.REACT_APP_CS_API_KEY;
+const MANAGEMENT_TOKEN = process.env.REACT_APP_CS_MANAGEMENT_TOKEN;
+const ENVIRONMENT = process.env.REACT_APP_CS_ENVIRONMENT;
 const BRANCH = "main";
 
 // ============================================
@@ -57,7 +58,7 @@ export function filterRatingsForBook(allRatings, bookUid) {
 function getManagementHeaders() {
   return {
     api_key: API_KEY,
-    authorization: "cs86b37ba9bb499ce9befada20",
+    authorization: MANAGEMENT_TOKEN,
     "Content-Type": "application/json",
     branch: BRANCH,
   };
@@ -148,7 +149,7 @@ export async function publishRating(entryUid) {
 
   const publishData = {
     entry: {
-      environments: [import.meta.env.VITE_CS_ENVIRONMENT],
+      environments: [ENVIRONMENT],
       locales: ["en-us"],
     },
   };
