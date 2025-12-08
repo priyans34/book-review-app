@@ -214,6 +214,47 @@
   font-weight: bold;
 }
 
+/* Auto-detect badge */
+.auto-badge {
+  font-size: 0.75rem;
+  margin-left: 0.25rem;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Auto-detect option in dropdown */
+.auto-detect-option {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(255, 140, 0, 0.05));
+}
+
+.auto-detect-option:hover {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 140, 0, 0.1));
+}
+
+.locale-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* Locale divider */
+.locale-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.25rem 0;
+}
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -252,6 +293,11 @@
 
 .toast.error .toast-icon {
   background: var(--error);
+  color: white;
+}
+
+.toast.info .toast-icon {
+  background: #3b82f6;
   color: white;
 }
 

@@ -93,6 +93,53 @@
   margin: 0;
 }
 
+/* Book Meta Info */
+.book-meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.meta-icon {
+  font-size: 1rem;
+}
+
+.meta-text {
+  font-weight: 500;
+}
+
+.reading-time-highlight {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 107, 53, 0.05) 100%);
+  border-color: rgba(255, 107, 53, 0.3);
+  color: var(--accent-primary);
+}
+
+.reading-time-highlight .meta-icon {
+  animation: pulse-time 2s ease-in-out infinite;
+}
+
+@keyframes pulse-time {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
 /* Rating Summary */
 .rating-summary {
   display: flex;
@@ -426,6 +473,15 @@
   
   .book-title-large {
     font-size: 1.75rem;
+  }
+  
+  .book-meta-info {
+    justify-content: center;
+  }
+  
+  .meta-item {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
   }
   
   .rating-summary {

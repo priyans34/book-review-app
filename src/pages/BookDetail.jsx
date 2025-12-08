@@ -12,14 +12,63 @@ import {
 import ReviewForm from "../components/ReviewForm";
 import "./BookDetail.css";
 
+// Format reading time from metadata
+// CMS stores either total hours OR total minutes (not hours + additional minutes)
+function formatReadingTime(readingTimeMetadata) {
+  if (!readingTimeMetadata) return null;
+
+  const hours = parseInt(readingTimeMetadata.estimated_hours) || 0;
+  const totalMinutes = parseInt(readingTimeMetadata.estimated_minutes) || 0;
+
+  // If we have hours, use that (e.g., 6 hours)
+  if (hours > 0) {
+    return {
+      display: hours === 1 ? `${hours} hour` : `${hours} hours`,
+      hours: hours,
+      minutes: 0,
+    };
+  }
+
+  // If we have minutes, convert to hours + minutes if >= 60
+  if (totalMinutes > 0) {
+    if (totalMinutes >= 60) {
+      const hrs = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      return {
+        display: mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hours`,
+        hours: hrs,
+        minutes: mins,
+      };
+    }
+    return {
+      display: `${totalMinutes} minutes`,
+      hours: 0,
+      minutes: totalMinutes,
+    };
+  }
+
+  return null;
+}
+
+function ReadingTimeBadge({ readingTime }) {
+  if (!readingTime) return null;
+
+  return (
+    <div className="reading-time-badge">
+      <div className="reading-time-icon-large">⏱️</div>
+      <div className="reading-time-content">
+        <span className="reading-time-label">Reading Time</span>
+        <span className="reading-time-value">{readingTime.display}</span>
+      </div>
+    </div>
+  );
+}
+
 function StarDisplay({ rating }) {
   return (
     <div className="star-display">
       {[1, 2, 3, 4, 5].map((star) => (
-        <span
-          key={star}
-          className={`star ${star <= rating ? "filled" : ""}`}
-        >
+        <span key={star} className={`star ${star <= rating ? "filled" : ""}`}>
           {star <= rating ? "★" : "☆"}
         </span>
       ))}
@@ -122,9 +171,18 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
 function LoadingState() {
   return (
     <div className="book-detail-loading">
-      <div className="skeleton" style={{ height: "60px", width: "60%", marginBottom: "16px" }} />
-      <div className="skeleton" style={{ height: "24px", width: "40%", marginBottom: "24px" }} />
-      <div className="skeleton" style={{ height: "200px", marginBottom: "32px" }} />
+      <div
+        className="skeleton"
+        style={{ height: "60px", width: "60%", marginBottom: "16px" }}
+      />
+      <div
+        className="skeleton"
+        style={{ height: "24px", width: "40%", marginBottom: "24px" }}
+      />
+      <div
+        className="skeleton"
+        style={{ height: "200px", marginBottom: "32px" }}
+      />
       <div className="skeleton" style={{ height: "150px" }} />
     </div>
   );
@@ -170,15 +228,15 @@ function BookDetail() {
   // Function to load/reload ratings
   const loadRatings = useCallback(async () => {
     setLoadingRatings(true);
-      try {
+    try {
       const all = await fetchAllRatings(locale);
-        setRatings(all);
-      } catch (err) {
-        console.error(err);
+      setRatings(all);
+    } catch (err) {
+      console.error(err);
       addToast("Failed to load reviews", "error");
-      } finally {
-        setLoadingRatings(false);
-      }
+    } finally {
+      setLoadingRatings(false);
+    }
   }, [addToast, locale]);
 
   // Load ratings when locale changes
@@ -200,40 +258,46 @@ function BookDetail() {
   }, [bookRatings]);
 
   // Handle submit review (create or update in CMS)
-  const handleSubmitReview = useCallback(async (reviewData) => {
-    try {
-      const dataToSend = {
-        title: reviewData.title,
-        book: [{ uid: book.uid, _content_type_uid: "book" }],
-        rating_value: reviewData.rating_value,
-        comment: reviewData.comment,
-        reviewer_name: reviewData.reviewer_name,
-        reviewer_email: reviewData.reviewer_email,
-        tags: [],
-      };
+  const handleSubmitReview = useCallback(
+    async (reviewData) => {
+      try {
+        const dataToSend = {
+          title: reviewData.title,
+          book: [{ uid: book.uid, _content_type_uid: "book" }],
+          rating_value: reviewData.rating_value,
+          comment: reviewData.comment,
+          reviewer_name: reviewData.reviewer_name,
+          reviewer_email: reviewData.reviewer_email,
+          tags: [],
+        };
 
-      if (editingReview?.uid) {
-        // Update existing review
-        await updateAndPublishRating(editingReview.uid, dataToSend, locale);
-        addToast("Review updated successfully!", "success");
-      } else {
-        // Create new review
-        await createAndPublishRating(dataToSend, locale);
-        addToast("Review submitted successfully!", "success");
+        if (editingReview?.uid) {
+          // Update existing review
+          await updateAndPublishRating(editingReview.uid, dataToSend, locale);
+          addToast("Review updated successfully!", "success");
+        } else {
+          // Create new review
+          await createAndPublishRating(dataToSend, locale);
+          addToast("Review submitted successfully!", "success");
+        }
+
+        // Refresh ratings after a short delay to allow CMS to process
+        setTimeout(() => {
+          loadRatings();
+        }, 1500);
+
+        setShowReviewForm(false);
+        setEditingReview(null);
+      } catch (err) {
+        console.error(err);
+        addToast(
+          err.message || "Failed to submit review. Please try again.",
+          "error"
+        );
       }
-
-      // Refresh ratings after a short delay to allow CMS to process
-      setTimeout(() => {
-        loadRatings();
-      }, 1500);
-
-      setShowReviewForm(false);
-      setEditingReview(null);
-    } catch (err) {
-      console.error(err);
-      addToast(err.message || "Failed to submit review. Please try again.", "error");
-    }
-  }, [book?.uid, editingReview, addToast, loadRatings, locale]);
+    },
+    [book?.uid, editingReview, addToast, loadRatings, locale]
+  );
 
   // Handle edit review
   const handleEditReview = useCallback((review) => {
@@ -242,26 +306,29 @@ function BookDetail() {
     setTimeout(() => {
       document.querySelector(".review-form-container")?.scrollIntoView({
         behavior: "smooth",
-        block: "start"
+        block: "start",
       });
     }, 100);
   }, []);
 
   // Handle delete review (delete from CMS)
-  const handleDeleteReview = useCallback(async (reviewUid) => {
-    try {
-      await deleteRating(reviewUid, locale);
-      addToast("Review deleted successfully!", "success");
+  const handleDeleteReview = useCallback(
+    async (reviewUid) => {
+      try {
+        await deleteRating(reviewUid, locale);
+        addToast("Review deleted successfully!", "success");
 
-      // Refresh ratings
-      setTimeout(() => {
-        loadRatings();
-      }, 1000);
-    } catch (err) {
-      console.error(err);
-      addToast(err.message || "Failed to delete review", "error");
-    }
-  }, [addToast, loadRatings, locale]);
+        // Refresh ratings
+        setTimeout(() => {
+          loadRatings();
+        }, 1000);
+      } catch (err) {
+        console.error(err);
+        addToast(err.message || "Failed to delete review", "error");
+      }
+    },
+    [addToast, loadRatings, locale]
+  );
 
   const handleCancelForm = useCallback(() => {
     setShowReviewForm(false);
@@ -309,7 +376,9 @@ function BookDetail() {
           <div className="book-details">
             <div className="book-meta-tags">
               {book.genre?.map((g, i) => (
-                <span key={i} className="tag">{g}</span>
+                <span key={i} className="tag">
+                  {g}
+                </span>
               ))}
               {book.featured && (
                 <span className="tag featured-tag">⭐ Featured</span>
@@ -320,11 +389,28 @@ function BookDetail() {
 
             {book.author && (
               <p className="book-author-large">by {book.author}</p>
-      )}
-
-      {book.publication_year && (
-              <p className="book-year-large">Published: {book.publication_year}</p>
             )}
+
+            {/* Book Meta Info */}
+            <div className="book-meta-info">
+              {book.publication_year && (
+                <div className="meta-item">
+                  <span className="meta-icon">📅</span>
+                  <span className="meta-text">
+                    Published {book.publication_year}
+                  </span>
+                </div>
+              )}
+              {book.reading_time_metadata && (
+                <div className="meta-item reading-time-highlight">
+                  <span className="meta-icon">⏱️</span>
+                  <span className="meta-text">
+                    {formatReadingTime(book.reading_time_metadata)?.display}{" "}
+                    read
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Rating Summary */}
             <div className="rating-summary">
@@ -337,7 +423,8 @@ function BookDetail() {
                   <div className="rating-details">
                     <StarDisplay rating={Math.round(averageRating)} />
                     <span className="review-count">
-                      {bookRatings.length} review{bookRatings.length !== 1 ? "s" : ""}
+                      {bookRatings.length} review
+                      {bookRatings.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                 </>
@@ -414,8 +501,8 @@ function BookDetail() {
               >
                 Write the First Review
               </button>
-              )}
-            </div>
+            )}
+          </div>
         )}
 
         {!loadingRatings && bookRatings.length > 0 && (
@@ -429,8 +516,8 @@ function BookDetail() {
                 onDelete={handleDeleteReview}
                 locale={locale}
               />
-          ))}
-        </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

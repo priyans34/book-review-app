@@ -404,6 +404,11 @@ label {
   border-color: var(--error);
 }
 
+.toast.info {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.1) 100%);
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
