@@ -76,42 +76,20 @@ function StarDisplay({ rating }) {
   );
 }
 
-// Check if review is flagged or pending moderation
-function getModerationStatus(review) {
-  if (review.flagged === true) return "flagged";
-  if (review.moderation_status === "pending") return "pending";
-  if (review.moderation_status === "rejected") return "rejected";
-  return "approved";
+// Check if review is flagged
+function isReviewFlagged(review) {
+  return review.flagged === true;
 }
 
-function ModerationBadge({ status, reason }) {
-  if (status === "approved") return null;
-
-  const badges = {
-    pending: {
-      icon: "⏳",
-      text: "Pending moderation",
-      className: "moderation-pending",
-    },
-    flagged: {
-      icon: "⚠️",
-      text: "Under review",
-      className: "moderation-flagged",
-    },
-    rejected: {
-      icon: "🚫",
-      text: "Content removed",
-      className: "moderation-rejected",
-    },
-  };
-
-  const badge = badges[status] || badges.pending;
-
+// Flagged Review Notice Component
+function FlaggedNotice({ reason }) {
   return (
-    <div className={`moderation-badge ${badge.className}`}>
-      <span className="moderation-icon">{badge.icon}</span>
-      <span className="moderation-text">{badge.text}</span>
-      {reason && <span className="moderation-reason">({reason})</span>}
+    <div className="flagged-notice">
+      <span className="flagged-icon">🚩</span>
+      <div className="flagged-content">
+        <span className="flagged-label">This review has been flagged</span>
+        {reason && <span className="flagged-reason">{reason}</span>}
+      </div>
     </div>
   );
 }
@@ -120,9 +98,7 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const moderationStatus = getModerationStatus(review);
-  const isHidden = moderationStatus === "rejected";
-  const isPending = moderationStatus === "pending" || moderationStatus === "flagged";
+  const isFlagged = isReviewFlagged(review);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -140,33 +116,32 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
     setIsDeleting(false);
   };
 
-  // Don't render rejected reviews
-  if (isHidden) {
-    return null;
-  }
-
   return (
-    <div className={`review-card ${isPending ? "review-pending" : ""}`}>
-      {/* Moderation Badge */}
-      <ModerationBadge
-        status={moderationStatus}
-        reason={review.moderation_reason}
-      />
+    <div className={`review-card ${isFlagged ? "review-flagged" : ""}`}>
+      {/* Flagged Notice */}
+      {isFlagged && <FlaggedNotice reason={review.flagged_reason} />}
 
       <div className="review-header">
         <div className="review-rating">
           <StarDisplay rating={review.rating_value} />
-          <span className="rating-number">{review.rating_value}/5</span>
+          <span className={`rating-number ${isFlagged ? "rating-excluded" : ""}`}>
+            {review.rating_value}/5
+            {isFlagged && <span className="excluded-badge">not counted</span>}
+          </span>
         </div>
-        {canEdit && !isPending && (
+        {canEdit && (
           <div className="review-actions">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => onEdit(review)}
-              aria-label="Edit review"
-            >
-              ✏️ Edit
-            </button>
+            {/* Hide edit button for flagged reviews */}
+            {!isFlagged && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => onEdit(review)}
+                aria-label="Edit review"
+              >
+                ✏️ Edit
+              </button>
+            )}
+            {/* Always show delete option */}
             {showDeleteConfirm ? (
               <div className="delete-confirm">
                 <span>Delete?</span>
@@ -198,15 +173,16 @@ function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
         )}
       </div>
 
-      {review.title && <h4 className="review-title">{review.title}</h4>}
+      {review.title && (
+        <h4 className={`review-title ${isFlagged ? "flagged-text" : ""}`}>
+          {review.title}
+        </h4>
+      )}
 
-      {/* Show blurred content for pending reviews */}
-      {isPending ? (
-        <p className="review-comment review-blurred">
-          This review is being checked by our moderation team...
+      {review.comment && (
+        <p className={`review-comment ${isFlagged ? "flagged-text" : ""}`}>
+          {review.comment}
         </p>
-      ) : (
-        review.comment && <p className="review-comment">{review.comment}</p>
       )}
 
       <div className="review-footer">
@@ -312,12 +288,19 @@ function BookDetail() {
     return filterRatingsForBook(ratings, book.uid);
   }, [ratings, book]);
 
-  // Calculate average rating
-  const averageRating = useMemo(() => {
-    if (!bookRatings.length) return null;
-    const sum = bookRatings.reduce((acc, r) => acc + (r.rating_value || 0), 0);
-    return (sum / bookRatings.length).toFixed(1);
+  // Separate flagged and valid reviews
+  const { validReviews, flaggedReviews } = useMemo(() => {
+    const valid = bookRatings.filter((r) => !r.flagged);
+    const flagged = bookRatings.filter((r) => r.flagged === true);
+    return { validReviews: valid, flaggedReviews: flagged };
   }, [bookRatings]);
+
+  // Calculate average rating (only from non-flagged reviews)
+  const averageRating = useMemo(() => {
+    if (!validReviews.length) return null;
+    const sum = validReviews.reduce((acc, r) => acc + (r.rating_value || 0), 0);
+    return (sum / validReviews.length).toFixed(1);
+  }, [validReviews]);
 
   // Handle submit review (create or update in CMS)
   const handleSubmitReview = useCallback(
@@ -485,13 +468,23 @@ function BookDetail() {
                   <div className="rating-details">
                     <StarDisplay rating={Math.round(averageRating)} />
                     <span className="review-count">
-                      {bookRatings.length} review
-                      {bookRatings.length !== 1 ? "s" : ""}
+                      {validReviews.length} review
+                      {validReviews.length !== 1 ? "s" : ""}
+                      {flaggedReviews.length > 0 && (
+                        <span className="flagged-count" title="Flagged reviews not counted in rating">
+                          {" "}({flaggedReviews.length} flagged)
+                        </span>
+                      )}
                     </span>
                   </div>
                 </>
               ) : (
-                <p className="no-ratings">No reviews yet. Be the first!</p>
+                <p className="no-ratings">
+                  {flaggedReviews.length > 0 
+                    ? `${flaggedReviews.length} review${flaggedReviews.length !== 1 ? "s" : ""} flagged. Be the first to add a valid review!`
+                    : "No reviews yet. Be the first!"
+                  }
+                </p>
               )}
             </div>
 

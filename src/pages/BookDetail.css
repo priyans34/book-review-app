@@ -380,63 +380,80 @@
   font-weight: 600;
 }
 
-/* Moderation Styles */
-.moderation-badge {
+/* Flagged Review Styles */
+.review-card.review-flagged {
+  opacity: 0.6;
+  border-color: rgba(248, 81, 73, 0.3);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(248, 81, 73, 0.05) 100%);
+}
+
+.review-card.review-flagged:hover {
+  opacity: 0.75;
+  border-color: rgba(248, 81, 73, 0.4);
+}
+
+.flagged-notice {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.2);
   border-radius: var(--radius-md);
-  font-size: 0.8rem;
-  font-weight: 500;
   margin-bottom: 1rem;
 }
 
-.moderation-icon {
-  font-size: 1rem;
+.flagged-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
-.moderation-text {
-  flex: 1;
+.flagged-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.moderation-reason {
-  font-size: 0.75rem;
-  opacity: 0.8;
-  font-style: italic;
-}
-
-.moderation-pending {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: #fbbf24;
-}
-
-.moderation-flagged {
-  background: rgba(251, 146, 60, 0.15);
-  border: 1px solid rgba(251, 146, 60, 0.3);
-  color: #fb923c;
-}
-
-.moderation-rejected {
-  background: rgba(248, 81, 73, 0.15);
-  border: 1px solid rgba(248, 81, 73, 0.3);
+.flagged-label {
+  font-size: 0.85rem;
+  font-weight: 600;
   color: #f85149;
 }
 
-/* Pending Review Card */
-.review-card.review-pending {
-  opacity: 0.85;
-  border-style: dashed;
-}
-
-.review-blurred {
+.flagged-reason {
+  font-size: 0.8rem;
   color: var(--text-muted);
   font-style: italic;
-  padding: 1rem;
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-  text-align: center;
+}
+
+/* Flagged text styling */
+.flagged-text {
+  color: var(--text-muted) !important;
+}
+
+/* Rating excluded badge */
+.rating-excluded {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.excluded-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+
+/* Flagged count in rating summary */
+.flagged-count {
+  font-size: 0.8rem;
+  color: #f85149;
+  opacity: 0.8;
 }
 
 /* Empty Reviews */
