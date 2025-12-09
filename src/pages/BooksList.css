@@ -223,7 +223,32 @@
   font-size: 0.8rem;
   color: var(--text-muted);
   margin: 0;
+}
+
+/* Book Meta Row */
+.book-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-top: auto;
+  flex-wrap: wrap;
+}
+
+/* Reading Time */
+.book-reading-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  background: rgba(255, 107, 53, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.reading-time-icon {
+  font-size: 0.75rem;
 }
 
 /* Book Card Arrow */

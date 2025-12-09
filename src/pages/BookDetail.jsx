@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useToast } from "../App";
+import { useToast, useLocale } from "../App";
 import {
   fetchBookBySlug,
   fetchAllRatings,
@@ -12,14 +12,63 @@ import {
 import ReviewForm from "../components/ReviewForm";
 import "./BookDetail.css";
 
+// Format reading time from metadata
+// CMS stores either total hours OR total minutes (not hours + additional minutes)
+function formatReadingTime(readingTimeMetadata) {
+  if (!readingTimeMetadata) return null;
+
+  const hours = parseInt(readingTimeMetadata.estimated_hours) || 0;
+  const totalMinutes = parseInt(readingTimeMetadata.estimated_minutes) || 0;
+
+  // If we have hours, use that (e.g., 6 hours)
+  if (hours > 0) {
+    return {
+      display: hours === 1 ? `${hours} hour` : `${hours} hours`,
+      hours: hours,
+      minutes: 0,
+    };
+  }
+
+  // If we have minutes, convert to hours + minutes if >= 60
+  if (totalMinutes > 0) {
+    if (totalMinutes >= 60) {
+      const hrs = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      return {
+        display: mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hours`,
+        hours: hrs,
+        minutes: mins,
+      };
+    }
+    return {
+      display: `${totalMinutes} minutes`,
+      hours: 0,
+      minutes: totalMinutes,
+    };
+  }
+
+  return null;
+}
+
+function ReadingTimeBadge({ readingTime }) {
+  if (!readingTime) return null;
+
+  return (
+    <div className="reading-time-badge">
+      <div className="reading-time-icon-large">⏱️</div>
+      <div className="reading-time-content">
+        <span className="reading-time-label">Reading Time</span>
+        <span className="reading-time-value">{readingTime.display}</span>
+      </div>
+    </div>
+  );
+}
+
 function StarDisplay({ rating }) {
   return (
     <div className="star-display">
       {[1, 2, 3, 4, 5].map((star) => (
-        <span
-          key={star}
-          className={`star ${star <= rating ? "filled" : ""}`}
-        >
+        <span key={star} className={`star ${star <= rating ? "filled" : ""}`}>
           {star <= rating ? "★" : "☆"}
         </span>
       ))}
@@ -27,14 +76,34 @@ function StarDisplay({ rating }) {
   );
 }
 
-function ReviewCard({ review, onEdit, onDelete, canEdit }) {
+// Check if review is flagged
+function isReviewFlagged(review) {
+  return review.flagged === true;
+}
+
+// Flagged Review Notice Component
+function FlaggedNotice({ reason }) {
+  return (
+    <div className="flagged-notice">
+      <span className="flagged-icon">🚩</span>
+      <div className="flagged-content">
+        <span className="flagged-label">This review has been flagged</span>
+        {reason && <span className="flagged-reason">{reason}</span>}
+      </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review, onEdit, onDelete, canEdit, locale }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const isFlagged = isReviewFlagged(review);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(locale || "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -48,21 +117,31 @@ function ReviewCard({ review, onEdit, onDelete, canEdit }) {
   };
 
   return (
-    <div className="review-card">
+    <div className={`review-card ${isFlagged ? "review-flagged" : ""}`}>
+      {/* Flagged Notice */}
+      {isFlagged && <FlaggedNotice reason={review.flagged_reason} />}
+
       <div className="review-header">
         <div className="review-rating">
           <StarDisplay rating={review.rating_value} />
-          <span className="rating-number">{review.rating_value}/5</span>
+          <span className={`rating-number ${isFlagged ? "rating-excluded" : ""}`}>
+            {review.rating_value}/5
+            {isFlagged && <span className="excluded-badge">not counted</span>}
+          </span>
         </div>
         {canEdit && (
           <div className="review-actions">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => onEdit(review)}
-              aria-label="Edit review"
-            >
-              ✏️ Edit
-            </button>
+            {/* Hide edit button for flagged reviews */}
+            {!isFlagged && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => onEdit(review)}
+                aria-label="Edit review"
+              >
+                ✏️ Edit
+              </button>
+            )}
+            {/* Always show delete option */}
             {showDeleteConfirm ? (
               <div className="delete-confirm">
                 <span>Delete?</span>
@@ -94,9 +173,17 @@ function ReviewCard({ review, onEdit, onDelete, canEdit }) {
         )}
       </div>
 
-      {review.title && <h4 className="review-title">{review.title}</h4>}
+      {review.title && (
+        <h4 className={`review-title ${isFlagged ? "flagged-text" : ""}`}>
+          {review.title}
+        </h4>
+      )}
 
-      {review.comment && <p className="review-comment">{review.comment}</p>}
+      {review.comment && (
+        <p className={`review-comment ${isFlagged ? "flagged-text" : ""}`}>
+          {review.comment}
+        </p>
+      )}
 
       <div className="review-footer">
         <div className="reviewer-info">
@@ -122,9 +209,18 @@ function ReviewCard({ review, onEdit, onDelete, canEdit }) {
 function LoadingState() {
   return (
     <div className="book-detail-loading">
-      <div className="skeleton" style={{ height: "60px", width: "60%", marginBottom: "16px" }} />
-      <div className="skeleton" style={{ height: "24px", width: "40%", marginBottom: "24px" }} />
-      <div className="skeleton" style={{ height: "200px", marginBottom: "32px" }} />
+      <div
+        className="skeleton"
+        style={{ height: "60px", width: "60%", marginBottom: "16px" }}
+      />
+      <div
+        className="skeleton"
+        style={{ height: "24px", width: "40%", marginBottom: "24px" }}
+      />
+      <div
+        className="skeleton"
+        style={{ height: "200px", marginBottom: "32px" }}
+      />
       <div className="skeleton" style={{ height: "150px" }} />
     </div>
   );
@@ -133,21 +229,24 @@ function LoadingState() {
 function BookDetail() {
   const { slug } = useParams();
   const { addToast } = useToast();
-  
+  const { locale } = useLocale();
+
   const [book, setBook] = useState(null);
   const [ratings, setRatings] = useState([]);
   const [loadingBook, setLoadingBook] = useState(true);
   const [loadingRatings, setLoadingRatings] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
 
-  // Load book data
+  // Load book data when slug or locale changes
   useEffect(() => {
     async function loadBook() {
+      setLoadingBook(true);
+      setError(null);
       try {
-        const data = await fetchBookBySlug(slug);
+        const data = await fetchBookBySlug(slug, locale);
         if (!data) {
           setError("Book not found");
         } else {
@@ -162,13 +261,13 @@ function BookDetail() {
     }
 
     loadBook();
-  }, [slug]);
+  }, [slug, locale]);
 
   // Function to load/reload ratings
   const loadRatings = useCallback(async () => {
     setLoadingRatings(true);
     try {
-      const all = await fetchAllRatings();
+      const all = await fetchAllRatings(locale);
       setRatings(all);
     } catch (err) {
       console.error(err);
@@ -176,9 +275,9 @@ function BookDetail() {
     } finally {
       setLoadingRatings(false);
     }
-  }, [addToast]);
+  }, [addToast, locale]);
 
-  // Initial load of ratings
+  // Load ratings when locale changes
   useEffect(() => {
     loadRatings();
   }, [loadRatings]);
@@ -189,76 +288,92 @@ function BookDetail() {
     return filterRatingsForBook(ratings, book.uid);
   }, [ratings, book]);
 
-  // Calculate average rating
-  const averageRating = useMemo(() => {
-    if (!bookRatings.length) return null;
-    const sum = bookRatings.reduce((acc, r) => acc + (r.rating_value || 0), 0);
-    return (sum / bookRatings.length).toFixed(1);
+  // Separate flagged and valid reviews
+  const { validReviews, flaggedReviews } = useMemo(() => {
+    const valid = bookRatings.filter((r) => !r.flagged);
+    const flagged = bookRatings.filter((r) => r.flagged === true);
+    return { validReviews: valid, flaggedReviews: flagged };
   }, [bookRatings]);
 
+  // Calculate average rating (only from non-flagged reviews)
+  const averageRating = useMemo(() => {
+    if (!validReviews.length) return null;
+    const sum = validReviews.reduce((acc, r) => acc + (r.rating_value || 0), 0);
+    return (sum / validReviews.length).toFixed(1);
+  }, [validReviews]);
+
   // Handle submit review (create or update in CMS)
-  const handleSubmitReview = useCallback(async (reviewData) => {
-    try {
-      const dataToSend = {
-        title: reviewData.title,
-        book: [{ uid: book.uid, _content_type_uid: "book" }],
-        rating_value: reviewData.rating_value,
-        comment: reviewData.comment,
-        reviewer_name: reviewData.reviewer_name,
-        reviewer_email: reviewData.reviewer_email,
-        tags: [],
-      };
+  const handleSubmitReview = useCallback(
+    async (reviewData) => {
+      try {
+        const dataToSend = {
+          title: reviewData.title,
+          book: [{ uid: book.uid, _content_type_uid: "book" }],
+          rating_value: reviewData.rating_value,
+          comment: reviewData.comment,
+          reviewer_name: reviewData.reviewer_name,
+          reviewer_email: reviewData.reviewer_email,
+          tags: [],
+        };
 
-      if (editingReview?.uid) {
-        // Update existing review
-        await updateAndPublishRating(editingReview.uid, dataToSend);
-        addToast("Review updated successfully!", "success");
-      } else {
-        // Create new review
-        await createAndPublishRating(dataToSend);
-        addToast("Review submitted successfully!", "success");
+        if (editingReview?.uid) {
+          // Update existing review
+          await updateAndPublishRating(editingReview.uid, dataToSend, locale);
+          addToast("Review updated successfully!", "success");
+        } else {
+          // Create new review
+          await createAndPublishRating(dataToSend, locale);
+          addToast("Review submitted successfully!", "success");
+        }
+
+        // Refresh ratings after a short delay to allow CMS to process
+        setTimeout(() => {
+          loadRatings();
+        }, 1500);
+
+        setShowReviewForm(false);
+        setEditingReview(null);
+      } catch (err) {
+        console.error(err);
+        addToast(
+          err.message || "Failed to submit review. Please try again.",
+          "error"
+        );
       }
-
-      // Refresh ratings after a short delay to allow CMS to process
-      setTimeout(() => {
-        loadRatings();
-      }, 1500);
-
-      setShowReviewForm(false);
-      setEditingReview(null);
-    } catch (err) {
-      console.error(err);
-      addToast(err.message || "Failed to submit review. Please try again.", "error");
-    }
-  }, [book?.uid, editingReview, addToast, loadRatings]);
+    },
+    [book?.uid, editingReview, addToast, loadRatings, locale]
+  );
 
   // Handle edit review
   const handleEditReview = useCallback((review) => {
     setEditingReview(review);
     setShowReviewForm(true);
     setTimeout(() => {
-      document.querySelector(".review-form-container")?.scrollIntoView({ 
+      document.querySelector(".review-form-container")?.scrollIntoView({
         behavior: "smooth",
-        block: "start"
+        block: "start",
       });
     }, 100);
   }, []);
 
   // Handle delete review (delete from CMS)
-  const handleDeleteReview = useCallback(async (reviewUid) => {
-    try {
-      await deleteRating(reviewUid);
-      addToast("Review deleted successfully!", "success");
-      
-      // Refresh ratings
-      setTimeout(() => {
-        loadRatings();
-      }, 1000);
-    } catch (err) {
-      console.error(err);
-      addToast(err.message || "Failed to delete review", "error");
-    }
-  }, [addToast, loadRatings]);
+  const handleDeleteReview = useCallback(
+    async (reviewUid) => {
+      try {
+        await deleteRating(reviewUid, locale);
+        addToast("Review deleted successfully!", "success");
+
+        // Refresh ratings
+        setTimeout(() => {
+          loadRatings();
+        }, 1000);
+      } catch (err) {
+        console.error(err);
+        addToast(err.message || "Failed to delete review", "error");
+      }
+    },
+    [addToast, loadRatings, locale]
+  );
 
   const handleCancelForm = useCallback(() => {
     setShowReviewForm(false);
@@ -266,7 +381,7 @@ function BookDetail() {
   }, []);
 
   if (loadingBook) return <LoadingState />;
-  
+
   if (error) {
     return (
       <div className="error-container">
@@ -306,7 +421,9 @@ function BookDetail() {
           <div className="book-details">
             <div className="book-meta-tags">
               {book.genre?.map((g, i) => (
-                <span key={i} className="tag">{g}</span>
+                <span key={i} className="tag">
+                  {g}
+                </span>
               ))}
               {book.featured && (
                 <span className="tag featured-tag">⭐ Featured</span>
@@ -314,14 +431,31 @@ function BookDetail() {
             </div>
 
             <h1 className="book-title-large">{book.title}</h1>
-            
+
             {book.author && (
               <p className="book-author-large">by {book.author}</p>
             )}
 
-            {book.publication_year && (
-              <p className="book-year-large">Published: {book.publication_year}</p>
-            )}
+            {/* Book Meta Info */}
+            <div className="book-meta-info">
+              {book.publication_year && (
+                <div className="meta-item">
+                  <span className="meta-icon">📅</span>
+                  <span className="meta-text">
+                    Published {book.publication_year}
+                  </span>
+                </div>
+              )}
+              {book.reading_time_metadata && (
+                <div className="meta-item reading-time-highlight">
+                  <span className="meta-icon">⏱️</span>
+                  <span className="meta-text">
+                    {formatReadingTime(book.reading_time_metadata)?.display}{" "}
+                    read
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Rating Summary */}
             <div className="rating-summary">
@@ -334,12 +468,23 @@ function BookDetail() {
                   <div className="rating-details">
                     <StarDisplay rating={Math.round(averageRating)} />
                     <span className="review-count">
-                      {bookRatings.length} review{bookRatings.length !== 1 ? "s" : ""}
+                      {validReviews.length} review
+                      {validReviews.length !== 1 ? "s" : ""}
+                      {flaggedReviews.length > 0 && (
+                        <span className="flagged-count" title="Flagged reviews not counted in rating">
+                          {" "}({flaggedReviews.length} flagged)
+                        </span>
+                      )}
                     </span>
                   </div>
                 </>
               ) : (
-                <p className="no-ratings">No reviews yet. Be the first!</p>
+                <p className="no-ratings">
+                  {flaggedReviews.length > 0 
+                    ? `${flaggedReviews.length} review${flaggedReviews.length !== 1 ? "s" : ""} flagged. Be the first to add a valid review!`
+                    : "No reviews yet. Be the first!"
+                  }
+                </p>
               )}
             </div>
 
@@ -424,6 +569,7 @@ function BookDetail() {
                 canEdit={true}
                 onEdit={handleEditReview}
                 onDelete={handleDeleteReview}
+                locale={locale}
               />
             ))}
           </div>

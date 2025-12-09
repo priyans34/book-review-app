@@ -1,10 +1,38 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useLocale } from "../App";
 import { fetchBooks } from "../services/contentApi";
 import "./BooksList.css";
 
+// Format reading time from metadata
+// CMS stores either total hours OR total minutes (not hours + additional minutes)
+function formatReadingTime(readingTimeMetadata) {
+  if (!readingTimeMetadata) return null;
+
+  const hours = parseInt(readingTimeMetadata.estimated_hours) || 0;
+  const totalMinutes = parseInt(readingTimeMetadata.estimated_minutes) || 0;
+
+  // If we have hours, use that (e.g., 6 hours)
+  if (hours > 0) {
+    return `${hours}h`;
+  }
+
+  // If we have minutes, convert to hours + minutes if >= 60
+  if (totalMinutes > 0) {
+    if (totalMinutes >= 60) {
+      const hrs = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+    }
+    return `${totalMinutes} min`;
+  }
+
+  return null;
+}
+
 function BookCard({ book, index }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const readingTime = formatReadingTime(book.reading_time_metadata);
 
   return (
     <Link
@@ -26,7 +54,9 @@ function BookCard({ book, index }) {
         ) : (
           <div className="book-cover-placeholder">
             <span className="book-icon">📖</span>
-            <span className="book-placeholder-title">{book.title?.slice(0, 2)}</span>
+            <span className="book-placeholder-title">
+              {book.title?.slice(0, 2)}
+            </span>
           </div>
         )}
         {book.featured && (
@@ -38,25 +68,35 @@ function BookCard({ book, index }) {
 
       <div className="book-card-content">
         <h3 className="book-title">{book.title}</h3>
-        
-        {book.author && (
-          <p className="book-author">by {book.author}</p>
-        )}
+
+        {book.author && <p className="book-author">by {book.author}</p>}
 
         {book.genre && book.genre.length > 0 && (
           <div className="book-genres">
             {book.genre.slice(0, 2).map((g, i) => (
-              <span key={i} className="tag tag-secondary">{g}</span>
+              <span key={i} className="tag tag-secondary">
+                {g}
+              </span>
             ))}
             {book.genre.length > 2 && (
-              <span className="tag tag-secondary">+{book.genre.length - 2}</span>
+              <span className="tag tag-secondary">
+                +{book.genre.length - 2}
+              </span>
             )}
           </div>
         )}
 
-        {book.publication_year && (
-          <p className="book-year">{book.publication_year}</p>
-        )}
+        <div className="book-meta-row">
+          {book.publication_year && (
+            <span className="book-year">{book.publication_year}</span>
+          )}
+          {readingTime && (
+            <span className="book-reading-time">
+              <span className="reading-time-icon">⏱️</span>
+              {readingTime}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="book-card-arrow">
@@ -73,8 +113,14 @@ function LoadingSkeleton() {
         <div key={i} className="book-card skeleton-card">
           <div className="skeleton book-cover-skeleton" />
           <div className="book-card-content">
-            <div className="skeleton" style={{ height: "24px", width: "80%", marginBottom: "8px" }} />
-            <div className="skeleton" style={{ height: "16px", width: "60%" }} />
+            <div
+              className="skeleton"
+              style={{ height: "24px", width: "80%", marginBottom: "8px" }}
+            />
+            <div
+              className="skeleton"
+              style={{ height: "16px", width: "60%" }}
+            />
           </div>
         </div>
       ))}
@@ -93,15 +139,19 @@ function EmptyState() {
 }
 
 function BooksList() {
+  const { locale } = useLocale();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Fetch books when locale changes
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await fetchBooks();
+        const data = await fetchBooks(locale);
         setBooks(data);
       } catch (err) {
         console.error(err);
@@ -112,7 +162,7 @@ function BooksList() {
     }
 
     load();
-  }, []);
+  }, [locale]);
 
   const filteredBooks = books.filter((book) => {
     const query = searchQuery.toLowerCase();
@@ -182,7 +232,8 @@ function BooksList() {
       {!loading && !error && filteredBooks.length > 0 && (
         <>
           <div className="results-count">
-            Showing {filteredBooks.length} book{filteredBooks.length !== 1 ? "s" : ""}
+            Showing {filteredBooks.length} book
+            {filteredBooks.length !== 1 ? "s" : ""}
             {searchQuery && ` for "${searchQuery}"`}
           </div>
           <div className="books-grid">
