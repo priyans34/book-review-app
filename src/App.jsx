@@ -208,7 +208,7 @@ function App() {
   const [autoDetectedInfo, setAutoDetectedInfo] = useState(null);
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('bookshelf_theme');
-    return saved || 'light';
+    return saved || 'dark';
   });
 
   // Toast function defined early so it can be used in useEffect
