@@ -18,6 +18,7 @@ It showcases how to combine a headless CMS with automations, localization, and a
 | 🛡️ **Content Moderation**     | AI-assisted moderation with automatic flagging of inappropriate reviews |
 | 🚀 **Launch Deployment**       | CI/CD with **Contentstack Launch** and GitHub integration               |
 | 🔍 **Smart Search**            | Search by title, author, or genre                                       |
+| 🌓 **Dark/Light Theme**        | Toggle between dark and light themes with preference persistence        |
 | 📱 **Responsive UI**           | Clean, responsive design that works well on desktop, tablet, and mobile |
 
 ---
@@ -184,7 +185,8 @@ This enables governance: the frontend can hide or visually mark reviews that are
 
 ### 🎨 UI / UX
 
-* Modern dark-themed design with accent colors
+* Modern design with dark and light theme toggle
+* Theme preference saved in localStorage
 * Responsive layout for mobile and desktop
 * Loading states and basic error feedback
 * Toast notifications for key actions (e.g., review submitted, language changed)
@@ -229,11 +231,10 @@ Bookshelf is deployed using **Contentstack Launch**, which handles:
 
 ## 🚧 Future Enhancements
 
-* [ ] Dark / light mode toggle
+* [x] Dark / light mode toggle
 * [ ] Sort books by rating, date, or reading time
 * [ ] Advanced genre filters and combined filters
 * [ ] User authentication and profile-based reviews
 * [ ] Favorites / reading list
 * [ ] Social sharing for books and reviews
 * [ ] Notifications for new reviews or recommendations
-

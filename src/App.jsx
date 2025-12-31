@@ -1,15 +1,20 @@
-import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
-import { useState, useEffect, createContext, useContext, useCallback } from "react";
-import { fetchLocales } from "./services/contentApi";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState
+} from 'react';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import './App.css';
+import BookDetail from './pages/BookDetail';
+import BooksList from './pages/BooksList';
+import { fetchLocales } from './services/contentApi';
 import {
   detectUserLocale,
   isFirstVisit,
-  markAsVisited,
-  getBrowserLanguages,
-} from "./services/localeDetection";
-import BooksList from "./pages/BooksList";
-import BookDetail from "./pages/BookDetail";
-import "./App.css";
+  markAsVisited
+} from './services/localeDetection';
 
 // Toast Context for notifications
 export const ToastContext = createContext();
@@ -25,6 +30,13 @@ export function useLocale() {
   return useContext(LocaleContext);
 }
 
+// Theme Context for dark/light mode
+export const ThemeContext = createContext();
+
+export function useTheme() {
+  return useContext(ThemeContext);
+}
+
 function ToastContainer({ toasts, removeToast }) {
   return (
     <div className="toast-container">
@@ -35,12 +47,32 @@ function ToastContainer({ toasts, removeToast }) {
           onClick={() => removeToast(toast.id)}
         >
           <span className="toast-icon">
-            {toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "ℹ"}
+            {toast.type === 'success'
+              ? '✓'
+              : toast.type === 'error'
+              ? '✕'
+              : 'ℹ'}
           </span>
           <span className="toast-message">{toast.message}</span>
         </div>
       ))}
     </div>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <button
+      className="theme-toggle"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+    >
+      <span className="theme-icon">{isDark ? '☀️' : '🌙'}</span>
+    </button>
   );
 }
 
@@ -83,10 +115,14 @@ function LocaleSelector({ locales, loading, autoDetectedInfo, onAutoDetect }) {
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Select language"
       >
-        <span className="locale-flag">{currentLocale?.flag || "🌐"}</span>
-        <span className="locale-name">{currentLocale?.name || "Select"}</span>
-        {isAutoDetected && <span className="auto-badge" title="Auto-detected">🎯</span>}
-        <span className="locale-arrow">{isOpen ? "▲" : "▼"}</span>
+        <span className="locale-flag">{currentLocale?.flag || '🌐'}</span>
+        <span className="locale-name">{currentLocale?.name || 'Select'}</span>
+        {isAutoDetected && (
+          <span className="auto-badge" title="Auto-detected">
+            🎯
+          </span>
+        )}
+        <span className="locale-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
 
       {isOpen && (
@@ -102,13 +138,15 @@ function LocaleSelector({ locales, loading, autoDetectedInfo, onAutoDetect }) {
               <span className="locale-name">Auto-detect</span>
               <span className="locale-hint">Based on browser</span>
             </button>
-            
+
             <div className="locale-divider" />
-            
+
             {locales.map((loc) => (
               <button
                 key={loc.code}
-                className={`locale-option ${loc.code === locale ? "active" : ""}`}
+                className={`locale-option ${
+                  loc.code === locale ? 'active' : ''
+                }`}
                 onClick={() => handleSelect(loc.code)}
               >
                 <span className="locale-flag">{loc.flag}</span>
@@ -126,7 +164,7 @@ function LocaleSelector({ locales, loading, autoDetectedInfo, onAutoDetect }) {
 
 function Header({ locales, localesLoading, autoDetectedInfo, onAutoDetect }) {
   const location = useLocation();
-  const isHome = location.pathname === "/books" || location.pathname === "/";
+  const isHome = location.pathname === '/books' || location.pathname === '/';
 
   return (
     <header className="app-header">
@@ -140,6 +178,7 @@ function Header({ locales, localesLoading, autoDetectedInfo, onAutoDetect }) {
         </Link>
 
         <div className="header-actions">
+          <ThemeToggle />
           <LocaleSelector
             locales={locales}
             loading={localesLoading}
@@ -163,13 +202,17 @@ function App() {
   const [locales, setLocales] = useState([]);
   const [localesLoading, setLocalesLoading] = useState(true);
   const [locale, setLocale] = useState(() => {
-    const saved = localStorage.getItem("bookshelf_locale");
-    return saved || "en-us";
+    const saved = localStorage.getItem('bookshelf_locale');
+    return saved || 'en-us';
   });
   const [autoDetectedInfo, setAutoDetectedInfo] = useState(null);
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('bookshelf_theme');
+    return saved || 'light';
+  });
 
   // Toast function defined early so it can be used in useEffect
-  const addToast = useCallback((message, type = "success") => {
+  const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
 
@@ -177,6 +220,20 @@ function App() {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
   }, []);
+
+  // Theme toggle function
+  const toggleTheme = useCallback(() => {
+    setTheme((prevTheme) => {
+      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('bookshelf_theme', newTheme);
+      return newTheme;
+    });
+  }, []);
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   // Fetch locales and auto-detect user's preferred locale on mount
   useEffect(() => {
@@ -188,7 +245,7 @@ function App() {
         // Auto-detect locale for first-time visitors or if no saved preference
         const firstVisit = isFirstVisit();
         const detection = detectUserLocale(data, {
-          forceDetection: firstVisit,
+          forceDetection: firstVisit
         });
 
         // Check if detected locale exists in available locales
@@ -196,7 +253,7 @@ function App() {
 
         if (localeExists) {
           setLocale(detection.locale);
-          localStorage.setItem("bookshelf_locale", detection.locale);
+          localStorage.setItem('bookshelf_locale', detection.locale);
 
           // Show notification for first-time visitors about auto-detection
           if (firstVisit && detection.wasAutoDetected) {
@@ -206,14 +263,16 @@ function App() {
             setAutoDetectedInfo({
               locale: detection.locale,
               localeName: detectedLocaleInfo?.name || detection.locale,
-              browserLanguage: detection.browserLanguage,
+              browserLanguage: detection.browserLanguage
             });
 
             // Show toast after a brief delay so UI is ready
             setTimeout(() => {
               addToast(
-                `🌍 Language set to ${detectedLocaleInfo?.name || detection.locale} based on your browser settings`,
-                "info"
+                `🌍 Language set to ${
+                  detectedLocaleInfo?.name || detection.locale
+                } based on your browser settings`,
+                'info'
               );
             }, 500);
 
@@ -224,13 +283,13 @@ function App() {
           const masterLocale = data.find((l) => l.isMaster);
           const defaultLocale = masterLocale ? masterLocale.code : data[0].code;
           setLocale(defaultLocale);
-          localStorage.setItem("bookshelf_locale", defaultLocale);
+          localStorage.setItem('bookshelf_locale', defaultLocale);
         }
       } catch (err) {
-        console.error("Failed to fetch locales:", err);
+        console.error('Failed to fetch locales:', err);
         // Fallback to default locale
         setLocales([
-          { code: "en-us", name: "English (US)", flag: "🇺🇸", isMaster: true },
+          { code: 'en-us', name: 'English (US)', flag: '🇺🇸', isMaster: true }
         ]);
       } finally {
         setLocalesLoading(false);
@@ -242,7 +301,7 @@ function App() {
 
   const handleSetLocale = useCallback((newLocale) => {
     setLocale(newLocale);
-    localStorage.setItem("bookshelf_locale", newLocale);
+    localStorage.setItem('bookshelf_locale', newLocale);
     // Clear auto-detected info when user manually changes locale
     setAutoDetectedInfo(null);
   }, []);
@@ -258,7 +317,7 @@ function App() {
 
     if (localeExists) {
       setLocale(detection.locale);
-      localStorage.setItem("bookshelf_locale", detection.locale);
+      localStorage.setItem('bookshelf_locale', detection.locale);
 
       const detectedLocaleInfo = locales.find(
         (l) => l.code === detection.locale
@@ -266,49 +325,55 @@ function App() {
       setAutoDetectedInfo({
         locale: detection.locale,
         localeName: detectedLocaleInfo?.name || detection.locale,
-        browserLanguage: detection.browserLanguage,
+        browserLanguage: detection.browserLanguage
       });
 
       addToast(
-        `🎯 Language set to ${detectedLocaleInfo?.name || detection.locale} based on your browser (${detection.browserLanguage})`,
-        "success"
+        `🎯 Language set to ${
+          detectedLocaleInfo?.name || detection.locale
+        } based on your browser (${detection.browserLanguage})`,
+        'success'
       );
     } else {
-      addToast("Could not detect a matching language", "error");
+      addToast('Could not detect a matching language', 'error');
     }
   }, [locales, addToast]);
 
   return (
-    <LocaleContext.Provider value={{ locale, setLocale: handleSetLocale, locales }}>
-      <ToastContext.Provider value={{ addToast }}>
-        <div className="app">
-          <Header
-            locales={locales}
-            localesLoading={localesLoading}
-            autoDetectedInfo={autoDetectedInfo}
-            onAutoDetect={handleAutoDetect}
-          />
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <LocaleContext.Provider
+        value={{ locale, setLocale: handleSetLocale, locales }}
+      >
+        <ToastContext.Provider value={{ addToast }}>
+          <div className="app">
+            <Header
+              locales={locales}
+              localesLoading={localesLoading}
+              autoDetectedInfo={autoDetectedInfo}
+              onAutoDetect={handleAutoDetect}
+            />
 
-          <main className="main-content">
-            <div className="container">
-              <Routes>
-                <Route path="/" element={<Navigate to="/books" replace />} />
-                <Route path="/books" element={<BooksList />} />
-                <Route path="/books/:slug" element={<BookDetail />} />
-              </Routes>
-            </div>
-          </main>
+            <main className="main-content">
+              <div className="container">
+                <Routes>
+                  <Route path="/" element={<Navigate to="/books" replace />} />
+                  <Route path="/books" element={<BooksList />} />
+                  <Route path="/books/:slug" element={<BookDetail />} />
+                </Routes>
+              </div>
+            </main>
 
-          <footer className="app-footer">
-            <div className="container">
-              <p>Made with ❤️ for book lovers</p>
-            </div>
-          </footer>
+            <footer className="app-footer">
+              <div className="container">
+                <p>Made with ❤️ for book lovers</p>
+              </div>
+            </footer>
 
-          <ToastContainer toasts={toasts} removeToast={removeToast} />
-        </div>
-      </ToastContext.Provider>
-    </LocaleContext.Provider>
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
+          </div>
+        </ToastContext.Provider>
+      </LocaleContext.Provider>
+    </ThemeContext.Provider>
   );
 }
 
